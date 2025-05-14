@@ -137,23 +137,23 @@ const fetchGames = async (searchValue: string) => {
     const from = (currentPage.value - 1) * itemsPerPage;
     const to = from + itemsPerPage - 1;
 
-    const filter = searchValue
-      ? client.from('video_games').select('*', { count: 'exact', head: true }).ilike('name', `%${searchValue}%`)
-      : client.from('video_games').select('*', { count: 'exact', head: true });
-
-    const { count, error: countError } = await filter;
+    const query = client
+      .from('video_games')
+      .select('*', { count: 'exact' })
+      .order('rank', { ascending: true });
+      
+    if (searchValue) {
+      query.ilike('name', `%${searchValue}%`);
+    }
     
-    if (countError) throw countError;
-    if (count) totalCount.value = count;
-
-    const dataQuery = searchValue
-      ? client.from('video_games').select().ilike('name', `%${searchValue}%`).order('rank', { ascending: true }).range(from, to)
-      : client.from('video_games').select().order('rank', { ascending: true }).range(from, to);
-
-    const { data, error: fetchError } = await dataQuery;
-    if (fetchError) throw fetchError;
-
-    games.value = data;
+    const { data, count, error } = await query
+      .order('rank', { ascending: true })
+      .range(from, to);
+    
+    if (error) throw error;
+    
+    games.value = data || [];
+    totalCount.value = count ?? undefined;
   } catch (err) {
     console.error('Error:', err);
   } finally {
